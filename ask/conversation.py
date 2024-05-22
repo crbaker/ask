@@ -7,8 +7,8 @@ import readline
 
 import os
 import atexit
-import typer
 import requests
+import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
