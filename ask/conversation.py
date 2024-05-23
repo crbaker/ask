@@ -26,13 +26,15 @@ def ask_claude(conversation: list[dict]):
     """
     api_key = os.getenv("CLAUDE_API_KEY")
     assert api_key, "Please set the CLAUDE_API_KEY environment variable"
+    
+    model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
 
     messages = [{"role": response["role"], "content": response["content"]}
                 for response in conversation]
 
     client = Anthropic(api_key=api_key)
     response = client.messages.create(max_tokens=1024,
-                           model="claude-3-haiku-20240307",
+                           model=model,
                            messages=messages)
 
     return response.content[0].text
