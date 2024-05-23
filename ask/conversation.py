@@ -20,8 +20,6 @@ from rich import print as rprint
 
 app = typer.Typer(rich_markup_mode="rich")
 
-_conversation: list[dict] = []
-
 def ask_claude(conversation: list[dict]):
     """
     Ask the Claude API for a response
@@ -31,7 +29,7 @@ def ask_claude(conversation: list[dict]):
 
     messages = [{"role": response["role"], "content": response["content"]}
                 for response in conversation]
-    
+
     client = Anthropic(api_key=api_key)
     response = client.messages.create(max_tokens=1024,
                            model="claude-3-haiku-20240307",
@@ -82,6 +80,8 @@ def start_repl():
     console = Console()
 
     history_path = os.path.expanduser("~/.ask_history")
+
+    _conversation: list[dict] = []
 
     def save_history(history_path=history_path):
         readline.write_history_file(history_path)
