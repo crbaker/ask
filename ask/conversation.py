@@ -7,8 +7,10 @@ import readline
 
 import os
 import atexit
-import requests
 import typer
+
+from anthropic import Anthropic
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
@@ -27,16 +29,13 @@ def ask_claude(conversation: list[dict]):
 
     messages = [{"role": response["role"], "content": response["content"]}
                 for response in conversation]
+    
+    client = Anthropic(api_key=api_key)
+    response = client.messages.create(max_tokens=1024,
+                           model="claude-3-haiku-20240307",
+                           messages=messages)
 
-    model = {"model": "claude-3-haiku-20240307",
-             "max_tokens": 1024,
-             "messages": messages}
-    headers = {"anthropic-version": "2023-06-01",
-               "Content-Type": "application/json",
-               "x-api-key": api_key}
-
-    response = requests.post("https://api.anthropic.com/v1/messages", json=model, headers=headers, timeout=10)
-    return response.json()["content"][0]["text"]
+    return response.content[0].text
 
 @app.command()
 def start_repl():
