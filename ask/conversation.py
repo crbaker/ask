@@ -2,9 +2,8 @@
 Ask conversation module
 """
 # ask/conversation.py
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long,broad-exception-caught
 import readline
-import pickle
 
 import os
 import atexit
@@ -12,11 +11,12 @@ import typer
 
 from anthropic import Anthropic
 
-from rich.text import Text
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
 from rich import print as rprint
+
+from ask.replay import delete_conversation, fetch_conversation, save_conversation, show_conversation, show_saved_conversations
 
 app = typer.Typer(rich_markup_mode="rich")
 
@@ -26,7 +26,7 @@ def ask_claude(conversation: list[dict]):
     """
     api_key = os.getenv("CLAUDE_API_KEY")
     assert api_key, "Please set the CLAUDE_API_KEY environment variable"
-    
+
     model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
 
     messages = [{"role": response["role"], "content": response["content"]}
@@ -39,39 +39,43 @@ def ask_claude(conversation: list[dict]):
 
     return response.content[0].text
 
-def replay_path():
+def handle_delete(current_query: str):
     """
-    Get the path to the conversation replay
+    Handle the delete command
     """
-    return os.path.expanduser("~/.ask_replay")
-
-def save_replay(replay: dict):
-    """
-    Save the conversation replay
-    """
-    path = replay_path()
-    with open(path, "wb") as file:
-        pickle.dump(replay, file)
-
-def save_conversation(tag: str, conversation: list[dict]):
-    """
-    Save the conversation replay
-    """
-    replay = fetch_replay()
-    replay[tag] = conversation
-
-    save_replay(replay)
-
-def fetch_replay():
-    """
-    Fetch the conversation replay
-    """
-    path = replay_path()
-    if os.path.exists(path):
-        with open(path, "rb") as file:
-            return pickle.load(file)
+    components = current_query.split(" ")
+    if len(components) == 2:
+        delete_conversation(components[1])
     else:
-        return {}
+        rprint("Please provide a tag to delete")
+
+def handle_replay(current_query: str, conversation: list[dict], console: Console):
+    """
+    Handle the replay command
+    """
+    components = current_query.split(" ")
+    if len(components) == 2:
+        old_conversation = fetch_conversation(components[1])
+        if old_conversation:
+            conversation.clear()
+            conversation.extend(old_conversation)
+
+            show_conversation(conversation, console)
+        else:
+            rprint("No conversation found with that tag")
+    else:
+        show_saved_conversations(console)
+
+def handle_save(current_query: str, conversation: list[dict]):
+    """
+    Handle the save command
+    """
+    components = current_query.split(" ")
+    if len(components) < 2:
+        rprint("Please provide a tag for the conversation to save")
+    else:
+        save_conversation(components[1], conversation)
+    current_query = None
 
 @app.command()
 def start_repl():
@@ -106,47 +110,21 @@ def start_repl():
 
         if current_query is None or current_query.strip() == "":
             current_query = input('> ').strip()
+
+        if current_query == "":
+            continue
         elif current_query == "exit":
             go_again = False
             rprint("Bye!:waving_hand:")
         elif current_query == "cls":
-            typer.clear()
-            current_query = None
+            console.clear()
             _conversation.clear()
+        elif current_query.lower().startswith("del"):
+            handle_delete(current_query)
         elif current_query.lower().startswith("replay"):
-            replay = fetch_replay()
-            components = current_query.split(" ")
-            if len(components) == 2:
-                tag = components[1]
-                if tag in replay:
-                    _conversation = replay[tag]
-                    for message in _conversation:
-                        if message["role"] == "user":
-                            rprint(message["content"])
-                        else:
-                            console.print(Panel(Markdown(message["content"])))
-            elif len(components) == 3 and components[2] == "del":
-                replay = fetch_replay()
-                del replay[components[1]]
-                save_replay(replay)
-            else:
-                text = Text("The following can be replayed:", style="bold")
-                console.print(text)
-
-                for tag in replay:
-                    rprint(tag)
-
-            current_query = None
-
+            handle_replay(current_query, _conversation, console)
         elif current_query.lower().startswith("save"):
-            components = current_query.split(" ")
-            if len(components) < 2:
-                rprint("Please provide a tag for the conversation to save")
-            else:
-                tag = components[1]
-                save_conversation(tag, _conversation)
-                rprint("Conversation saved")
-            current_query = None
+            handle_save(current_query, _conversation)
         else:
             try:
                 _conversation.append({"role": "user", "content": current_query})
@@ -156,5 +134,5 @@ def start_repl():
             except Exception as exception:
                 rprint("[italic red]Query Error[/italic red] :exploding_head:")
                 rprint(exception)
-            finally:
-                current_query = None
+                
+        current_query = None
