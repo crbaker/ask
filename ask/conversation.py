@@ -52,6 +52,16 @@ def remove_html_tags(text: str):
     h.ignore_links = True
     return h.handle(text)
 
+def read_txt_file(path: str):
+    """
+    Read a text file and return the text
+    """
+    try:
+        with open(path, "r") as file:
+            return file.read()
+    except Exception:
+        return None
+
 def read_file(path: str):
     """
     Read a file and return the text
@@ -80,8 +90,10 @@ def handle_open(current_query: str):
         path = components[1]
         if path.startswith("http"):
             return read_url(path)
+        elif path.endswith("txt"):
+            return read_txt_file(path)
         else:
-            return textract.process(path)
+            return read_file(path)
     else:
         rprint("Please provide a file path to read")
         return None
