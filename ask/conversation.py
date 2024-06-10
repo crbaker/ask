@@ -6,8 +6,13 @@ Ask conversation module
 import readline
 
 import os
+import re
+import shlex
 import atexit
 import typer
+import requests
+
+import html2text
 
 from anthropic import Anthropic
 
@@ -15,6 +20,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
 from rich import print as rprint
+
+import textract
 
 from ask.replay import delete_conversation, fetch_conversation, save_conversation, show_conversation, show_saved_conversations
 
@@ -38,6 +45,46 @@ def ask_claude(conversation: list[dict]):
                            messages=messages)
 
     return response.content[0].text
+
+def remove_html_tags(text: str):
+    """Remove html tags from a string"""
+    h = html2text.HTML2Text()
+    h.ignore_links = True
+    return h.handle(text)
+
+def read_file(path: str):
+    """
+    Read a file and return the text
+    """
+    try:
+        return textract.process(path)
+    except Exception:
+        return None
+    
+def read_url(url: str):
+    """
+    Read a file and return the text
+    """
+    try:
+        response = requests.get(url)
+        return remove_html_tags(response.text)
+    except Exception:
+        return None
+
+def handle_open(current_query: str):
+    """
+    Handle the open command
+    """
+    components = shlex.split(current_query)
+    if len(components) == 2:
+        path = components[1]
+        if path.startswith("http"):
+            return read_url(path)
+        else:
+            return textract.process(path)
+    else:
+        rprint("Please provide a file path to read")
+        return None
 
 def handle_delete(current_query: str):
     """
@@ -119,6 +166,18 @@ def start_repl():
         elif current_query == "cls":
             console.clear()
             _conversation.clear()
+        elif current_query.lower().startswith("open"):
+            file_text = handle_open(current_query)
+            if file_text:
+                query = f"Please read this text:\n\n{file_text}\n\n"
+                _conversation.append({"role": "user", "content": query})
+                answer = ask_claude(_conversation)
+
+                _conversation.append({"role": "assistant", "content": answer})
+                console.print(Panel(Markdown(answer)))
+            else:
+                rprint("No text found in the file")
+
         elif current_query.lower().startswith("del"):
             handle_delete(current_query)
         elif current_query.lower().startswith("replay"):
