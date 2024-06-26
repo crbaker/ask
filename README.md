@@ -38,3 +38,6 @@ To view a list of saved conversations type `replay {tag}` where {tag} is the nam
 
 ### Delete a replay a conversations
 To view a list of saved conversations type `replay {tag} del` where {tag} is the name of a previously saved conversation
+
+### Open a file or URL
+To read the contents or a file `open "{path_or_url}"` where {path_or_url} is the full path or URL of the content you want to read into the AI conversation
