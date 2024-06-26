@@ -6,7 +6,6 @@ Ask conversation module
 import readline
 
 import os
-import re
 import shlex
 import atexit
 import typer
@@ -16,6 +15,7 @@ import html2text
 
 from anthropic import Anthropic
 
+from pytube import YouTube
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
@@ -51,6 +51,60 @@ def remove_html_tags(text: str):
     h = html2text.HTML2Text()
     h.ignore_links = True
     return h.handle(text)
+
+def is_youtube(url: str):
+    """
+    Check if the url is a youtube url
+    """
+    return url.startswith("https://youtu.be")
+
+def map_utf(utf):
+    """
+    Map the utf to a string
+    """
+    return utf["utf8"]
+
+def ignore_new_line(word):
+    """
+    Ignore new line characters
+    """
+    return word != "\n"
+
+def map_event(event):
+    """
+    Map the event to a string
+    """
+    if "segs" in event:
+        return "".join(list(filter(ignore_new_line, map(map_utf, event["segs"]))))
+    else:
+        return ""
+
+def extract_captions(yt: YouTube):
+    """
+    Extract the captions from a youtube video
+    """
+    captions = yt.captions
+
+    if "en" in captions:
+        return captions["en"]
+    elif "a.en" in captions:
+        return captions["a.en"]
+    else:
+        return None
+
+def read_youtube(url: str):
+    """
+    Read a youtube video and return the text
+    """
+    yt = YouTube(url)
+    yt.bypass_age_gate()
+    captions = extract_captions(yt)
+    if captions is not None:
+        dict_captions = captions.json_captions
+        youtube_text = " ".join(list(map(map_event, dict_captions['events'])))
+        return youtube_text
+    else:
+        return None
 
 def read_txt_file(path: str):
     """
@@ -89,7 +143,10 @@ def handle_open(current_query: str):
     if len(components) == 2:
         path = components[1]
         if path.startswith("http"):
-            return read_url(path)
+            if is_youtube(path):
+                return read_youtube(path)
+            else:
+                return read_url(path)
         elif path.endswith("txt"):
             return read_txt_file(path)
         else:
