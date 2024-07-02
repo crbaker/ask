@@ -56,7 +56,7 @@ def is_youtube(url: str):
     """
     Check if the url is a youtube url
     """
-    return url.startswith("https://youtu.be")
+    return url.startswith("https://youtu.be") or url.startswith("https://www.youtube.com")
 
 def map_utf(utf):
     """
