@@ -27,6 +27,9 @@ from ask.replay import delete_conversation, fetch_conversation, save_conversatio
 
 app = typer.Typer(rich_markup_mode="rich")
 
+def as_chat_gpt(conversation: list[dict]):
+    pass
+
 def ask_claude(conversation: list[dict]):
     """
     Ask the Claude API for a response
