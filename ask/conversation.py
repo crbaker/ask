@@ -125,7 +125,8 @@ def read_file(path: str):
     """
     try:
         return textract.process(path)
-    except Exception:
+    except Exception as e:
+        rprint(e)
         return None
     
 def read_url(url: str):
