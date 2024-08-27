@@ -134,7 +134,7 @@ def read_url(url: str):
     Read a file and return the text
     """
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
         return remove_html_tags(response.text)
     except Exception:
         return None
