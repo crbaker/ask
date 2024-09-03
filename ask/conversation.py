@@ -27,9 +27,6 @@ from ask.replay import delete_conversation, fetch_conversation, save_conversatio
 
 app = typer.Typer(rich_markup_mode="rich")
 
-def as_chat_gpt(conversation: list[dict]):
-    pass
-
 def ask_claude(conversation: list[dict]):
     """
     Ask the Claude API for a response
@@ -79,8 +76,7 @@ def map_event(event):
     """
     if "segs" in event:
         return "".join(list(filter(ignore_new_line, map(map_utf, event["segs"]))))
-    else:
-        return ""
+    return ""
 
 def extract_captions(yt: YouTube):
     """
@@ -90,10 +86,11 @@ def extract_captions(yt: YouTube):
 
     if "en" in captions:
         return captions["en"]
-    elif "a.en" in captions:
+
+    if "a.en" in captions:
         return captions["a.en"]
-    else:
-        return None
+
+    return None
 
 def read_youtube(url: str):
     """
@@ -106,15 +103,15 @@ def read_youtube(url: str):
         dict_captions = captions.json_captions
         youtube_text = " ".join(list(map(map_event, dict_captions['events'])))
         return youtube_text
-    else:
-        return None
+
+    return None
 
 def read_txt_file(path: str):
     """
     Read a text file and return the text
     """
     try:
-        with open(path, "r") as file:
+        with open(path, "r", encoding="utf-8") as file:
             return file.read()
     except Exception:
         return None
@@ -128,13 +125,13 @@ def read_file(path: str):
     except Exception as e:
         rprint(e)
         return None
-    
+
 def read_url(url: str):
     """
     Read a file and return the text
     """
     try:
-        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
         return remove_html_tags(response.text)
     except Exception:
         return None
@@ -149,8 +146,8 @@ def handle_open(current_query: str):
         if path.startswith("http"):
             if is_youtube(path):
                 return read_youtube(path)
-            else:
-                return read_url(path)
+
+            return read_url(path)
         elif path.endswith("txt"):
             return read_txt_file(path)
         else:
@@ -266,5 +263,5 @@ def start_repl():
             except Exception as exception:
                 rprint("[italic red]Query Error[/italic red] :exploding_head:")
                 rprint(exception)
-                
+
         current_query = None
