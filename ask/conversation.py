@@ -15,13 +15,13 @@ import html2text
 
 from anthropic import Anthropic
 
-from pytube import YouTube
+from pytubefix import YouTube
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
 from rich import print as rprint
 
-import textract
+from pypdf import PdfReader
 
 from ask.replay import delete_conversation, fetch_conversation, save_conversation, show_conversation, show_saved_conversations
 
@@ -34,6 +34,7 @@ def ask_claude(conversation: list[dict]):
     api_key = os.getenv("CLAUDE_API_KEY")
     assert api_key, "Please set the CLAUDE_API_KEY environment variable"
 
+    # Models are shown at https://docs.anthropic.com/en/docs/about-claude/models#model-comparison-table
     model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
 
     messages = [{"role": response["role"], "content": response["content"]}
@@ -97,7 +98,6 @@ def read_youtube(url: str):
     Read a youtube video and return the text
     """
     yt = YouTube(url)
-    yt.bypass_age_gate()
     captions = extract_captions(yt)
     if captions is not None:
         dict_captions = captions.json_captions
@@ -121,7 +121,9 @@ def read_file(path: str):
     Read a file and return the text
     """
     try:
-        return textract.process(path)
+        reader = PdfReader(path, strict=True)
+        all_text = list(map(lambda page: page.extract_text(), reader.pages))
+        return " ".join(all_text)
     except Exception as e:
         rprint(e)
         return None
@@ -146,7 +148,6 @@ def handle_open(current_query: str):
         if path.startswith("http"):
             if is_youtube(path):
                 return read_youtube(path)
-
             return read_url(path)
         elif path.endswith("txt"):
             return read_txt_file(path)
