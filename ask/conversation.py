@@ -167,12 +167,12 @@ def handle_copy(current_query: str, conversation: list[dict]):
         if current_query.endswith("all"):
             all_content = list(map(lambda x: x["content"], conversation))
             pyperclip.copy("\n".join(all_content))
-            rprint("[bold white on green]Copying all responses[/]")
+            rprint("[white on green]Copying all responses[/]")
         else:
-            rprint("[bold white on green]Copying last response[/]")
+            rprint("[white on green]Copying last response[/]")
             pyperclip.copy(conversation[-1]["content"])
     else:
-        rprint("[bold black on red]Nothing to copy[/]")
+        rprint("[black on red]Nothing to copy[/]")
 
 def handle_delete(current_query: str):
     """
@@ -197,9 +197,18 @@ def handle_replay(current_query: str, conversation: list[dict], console: Console
 
             show_conversation(conversation, console)
         else:
-            rprint("No conversation found with that tag")
+            rprint("[black on red]No conversation found with that tag[/]")
     else:
         show_saved_conversations(console)
+
+def handle_help():
+    rprint("[italic blue]type `exit` to quit[/]")
+    rprint('[italic blue]type `open "path"` to open a file or url.[/]')
+    rprint("[italic blue]type `replay` to view saved replays.[/]")
+    rprint('[italic blue]type `replay "name"` to reload a previously saved conversation.[/]')
+    rprint('[italic blue]type `save "name"` to save the current conversation.[/]')
+    rprint('[italic blue]type `copy` to copy the last response to the clipboard.[/]')
+    rprint('[italic blue]type `copy all` to copy the whole conversation to the clipboard.[/]')
 
 def handle_save(current_query: str, conversation: list[dict]):
     """
@@ -207,7 +216,7 @@ def handle_save(current_query: str, conversation: list[dict]):
     """
     components = current_query.split(" ")
     if len(components) < 2:
-        rprint("Please provide a tag for the conversation to save")
+        rprint("[black on red]Please provide a tag for the conversation to save[/]")
     else:
         save_conversation(components[1], conversation)
     current_query = None
@@ -236,8 +245,11 @@ def start_repl():
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set editing-mode vi")
 
+    model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
+
     rprint("[italic pink]Ask Repl[/italic pink] :brain:")
-    rprint("[italic blue]type `exit` to quit[/italic blue]")
+    rprint(f"[italic yellow]using model {model}[/]")
+    rprint("[italic blue]type `help` to view available commands[/]")
 
     current_query: str = None
 
@@ -256,6 +268,8 @@ def start_repl():
             _conversation.clear()
         elif current_query.lower().startswith("copy"):
             handle_copy(current_query, _conversation)
+        elif current_query.lower().startswith("help"):
+            handle_help()
         elif current_query.lower().startswith("open"):
             file_text = handle_open(current_query)
             if file_text:
@@ -266,7 +280,7 @@ def start_repl():
                 _conversation.append({"role": "assistant", "content": answer})
                 console.print(Panel(Markdown(answer)))
             else:
-                rprint("No text found in the file")
+                rprint("[black on red]No text found in the file[/]")
 
         elif current_query.lower().startswith("del"):
             handle_delete(current_query)
