@@ -11,6 +11,7 @@ import atexit
 import typer
 import requests
 
+import pyperclip
 import html2text
 
 from anthropic import Anthropic
@@ -149,13 +150,27 @@ def handle_open(current_query: str):
             if is_youtube(path):
                 return read_youtube(path)
             return read_url(path)
-        elif path.endswith("txt"):
+
+        if path.endswith("txt"):
             return read_txt_file(path)
+
+        return read_file(path)
+
+    rprint("Please provide a file path to read")
+    return None
+
+def handle_copy(current_query: str, conversation: list[dict]):
+    """
+    Handle the copy command
+    """
+    if len(conversation) > 0:
+        if current_query.endswith("all"):
+            all_content = list(map(lambda x: x["content"], conversation))
+            pyperclip.copy("\n".join(all_content))
+            rprint("Copied all")
         else:
-            return read_file(path)
-    else:
-        rprint("Please provide a file path to read")
-        return None
+            print("Copying last")
+            pyperclip.copy(conversation[-1]["content"])
 
 def handle_delete(current_query: str):
     """
@@ -237,6 +252,8 @@ def start_repl():
         elif current_query == "cls":
             console.clear()
             _conversation.clear()
+        elif current_query.lower().startswith("copy"):
+            handle_copy(current_query, _conversation)
         elif current_query.lower().startswith("open"):
             file_text = handle_open(current_query)
             if file_text:
