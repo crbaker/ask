@@ -167,10 +167,12 @@ def handle_copy(current_query: str, conversation: list[dict]):
         if current_query.endswith("all"):
             all_content = list(map(lambda x: x["content"], conversation))
             pyperclip.copy("\n".join(all_content))
-            rprint("Copied all")
+            rprint("[bold white on green]Copying all responses[/]")
         else:
-            print("Copying last")
+            rprint("[bold white on green]Copying last response[/]")
             pyperclip.copy(conversation[-1]["content"])
+    else:
+        rprint("[bold black on red]Nothing to copy[/]")
 
 def handle_delete(current_query: str):
     """
