@@ -15,6 +15,7 @@ import pyperclip
 import html2text
 
 from anthropic import Anthropic
+import speech_recognition as sr
 
 from pytubefix import YouTube
 from rich.console import Console
@@ -107,6 +108,26 @@ def read_youtube(url: str):
 
     return None
 
+def read_opus_file(path: str):
+    """
+    Read an opus file and return the text
+    """
+    file_type_to_convert = ".opus"
+    file_type_to_recognize = ".wav"
+
+    new_path = path[:-len(file_type_to_convert)] + file_type_to_recognize
+    rprint("[white on green]Converting voice note[/]")
+    os.system("ffmpeg -y -i \"{}\" -vn \"{}\" >/dev/null 2>&1".format(path, new_path))
+
+    recognizer = sr.Recognizer()
+    audio = sr.AudioFile(new_path)
+    with audio as source:
+        audio_data = recognizer.record(audio)
+        rprint("[white on green]Transcribing voice note[/]")
+        text =  recognizer.recognize_google(audio_data, language='en-US')
+        os.remove(new_path)
+        return text
+
 def read_txt_file(path: str):
     """
     Read a text file and return the text
@@ -146,6 +167,7 @@ def handle_open(current_query: str):
     components = shlex.split(current_query)
     if len(components) == 2:
         path = components[1]
+
         if path.startswith("http"):
             if is_youtube(path):
                 return read_youtube(path)
@@ -153,6 +175,9 @@ def handle_open(current_query: str):
 
         if path.endswith("txt"):
             return read_txt_file(path)
+
+        if path.endswith("opus"):
+            return read_opus_file(path)
 
         return read_file(path)
 
@@ -289,13 +314,16 @@ def start_repl():
         elif current_query.lower().startswith("save"):
             handle_save(current_query, _conversation)
         else:
-            try:
-                _conversation.append({"role": "user", "content": current_query})
-                answer = ask_claude(_conversation)
-                _conversation.append({"role": "assistant", "content": answer})
-                console.print(Panel(Markdown(answer)))
-            except Exception as exception:
-                rprint("[italic red]Query Error[/italic red] :exploding_head:")
-                rprint(exception)
+            if len(current_query.strip().split(" ")) == 1:
+                rprint("[italic red]Query too short[/italic red] :exploding_head:")
+            else:
+                try:
+                    _conversation.append({"role": "user", "content": current_query})
+                    answer = ask_claude(_conversation)
+                    _conversation.append({"role": "assistant", "content": answer})
+                    console.print(Panel(Markdown(answer)))
+                except Exception as exception:
+                    rprint("[italic red]Query Error[/italic red] :exploding_head:")
+                    rprint(exception)
 
         current_query = None
