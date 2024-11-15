@@ -115,17 +115,22 @@ def read_opus_file(path: str):
     file_type_to_convert = ".opus"
     file_type_to_recognize = ".wav"
 
-    new_path = path[:-len(file_type_to_convert)] + file_type_to_recognize
+    full_path = os.path.expanduser(path)
+    
+    wav_path = full_path[:-len(file_type_to_convert)] + file_type_to_recognize
     rprint("[white on green]Converting voice note[/]")
-    os.system("ffmpeg -y -i \"{}\" -vn \"{}\" >/dev/null 2>&1".format(path, new_path))
+    os.system("ffmpeg -y -i \"{}\" -vn \"{}\" >/dev/null 2>&1".format(full_path, wav_path))
 
     recognizer = sr.Recognizer()
-    audio = sr.AudioFile(new_path)
+    audio = sr.AudioFile(wav_path)
     with audio as source:
-        audio_data = recognizer.record(audio)
+        audio_data = recognizer.record(source)
         rprint("[white on green]Transcribing voice note[/]")
         text =  recognizer.recognize_google(audio_data, language='en-US')
-        os.remove(new_path)
+
+        if os.path.exists(wav_path):
+            os.remove(wav_path)
+
         return text
 
 def read_txt_file(path: str):
