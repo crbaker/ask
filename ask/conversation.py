@@ -1,6 +1,7 @@
 """
 Ask conversation module
 """
+
 # ask/conversation.py
 # pylint: disable=line-too-long,broad-exception-caught
 import readline
@@ -10,6 +11,8 @@ import shlex
 import atexit
 import typer
 import requests
+
+from openai import OpenAI
 
 import pyperclip
 import html2text
@@ -25,9 +28,16 @@ from rich import print as rprint
 
 from pypdf import PdfReader
 
-from ask.replay import delete_conversation, fetch_conversation, save_conversation, show_conversation, show_saved_conversations
+from ask.replay import (
+    delete_conversation,
+    fetch_conversation,
+    save_conversation,
+    show_conversation,
+    show_saved_conversations,
+)
 
 app = typer.Typer(rich_markup_mode="rich")
+
 
 def ask_claude(conversation: list[dict]):
     """
@@ -39,15 +49,34 @@ def ask_claude(conversation: list[dict]):
     # Models are shown at https://docs.anthropic.com/en/docs/about-claude/models#model-comparison-table
     model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
 
-    messages = [{"role": response["role"], "content": response["content"]}
-                for response in conversation]
+    messages = [
+        {"role": response["role"], "content": response["content"]}
+        for response in conversation
+    ]
 
     client = Anthropic(api_key=api_key)
-    response = client.messages.create(max_tokens=1024,
-                           model=model,
-                           messages=messages)
+    response = client.messages.create(max_tokens=1024, model=model, messages=messages)
 
     return response.content[0].text
+
+
+def ask_chatgpt(conversation: list[dict], model="gpt-5"):
+    """
+    Ask the ChatGPT API for a response
+    """
+    client = OpenAI(
+        api_key=os.getenv("CHATGPT_API_KEY"),
+    )
+    model = os.getenv("CHATGPT_MODEL", "gpt-5")
+
+    messages = [
+        {"role": response["role"], "content": response["content"]}
+        for response in conversation
+    ]
+
+    response = client.chat.completions.create(model=model, messages=messages)
+    return response.choices[0].message.content or ""
+
 
 def remove_html_tags(text: str):
     """Remove html tags from a string"""
@@ -55,11 +84,15 @@ def remove_html_tags(text: str):
     h.ignore_links = True
     return h.handle(text)
 
+
 def is_youtube(url: str):
     """
     Check if the url is a youtube url
     """
-    return url.startswith("https://youtu.be") or url.startswith("https://www.youtube.com")
+    return url.startswith("https://youtu.be") or url.startswith(
+        "https://www.youtube.com"
+    )
+
 
 def map_utf(utf):
     """
@@ -67,11 +100,13 @@ def map_utf(utf):
     """
     return utf["utf8"]
 
+
 def ignore_new_line(word):
     """
     Ignore new line characters
     """
     return word != "\n"
+
 
 def map_event(event):
     """
@@ -80,6 +115,7 @@ def map_event(event):
     if "segs" in event:
         return "".join(list(filter(ignore_new_line, map(map_utf, event["segs"]))))
     return ""
+
 
 def extract_captions(yt: YouTube):
     """
@@ -95,6 +131,7 @@ def extract_captions(yt: YouTube):
 
     return None
 
+
 def read_youtube(url: str):
     """
     Read a youtube video and return the text
@@ -103,10 +140,11 @@ def read_youtube(url: str):
     captions = extract_captions(yt)
     if captions is not None:
         dict_captions = captions.json_captions
-        youtube_text = " ".join(list(map(map_event, dict_captions['events'])))
+        youtube_text = " ".join(list(map(map_event, dict_captions["events"])))
         return youtube_text
 
     return None
+
 
 def read_opus_file(path: str):
     """
@@ -116,22 +154,23 @@ def read_opus_file(path: str):
     file_type_to_recognize = ".wav"
 
     full_path = os.path.expanduser(path)
-    
-    wav_path = full_path[:-len(file_type_to_convert)] + file_type_to_recognize
+
+    wav_path = full_path[: -len(file_type_to_convert)] + file_type_to_recognize
     rprint("[white on green]Converting voice note[/]")
-    os.system("ffmpeg -y -i \"{}\" -vn \"{}\" >/dev/null 2>&1".format(full_path, wav_path))
+    os.system('ffmpeg -y -i "{}" -vn "{}" >/dev/null 2>&1'.format(full_path, wav_path))
 
     recognizer = sr.Recognizer()
     audio = sr.AudioFile(wav_path)
     with audio as source:
         audio_data = recognizer.record(source)
         rprint("[white on green]Transcribing voice note[/]")
-        text =  recognizer.recognize_google(audio_data, language='en-US')
+        text = recognizer.recognize_google(audio_data, language="en-US")
 
         if os.path.exists(wav_path):
             os.remove(wav_path)
 
         return text
+
 
 def read_txt_file(path: str):
     """
@@ -142,6 +181,7 @@ def read_txt_file(path: str):
             return file.read()
     except Exception:
         return None
+
 
 def read_file(path: str):
     """
@@ -155,6 +195,7 @@ def read_file(path: str):
         rprint(e)
         return None
 
+
 def read_url(url: str):
     """
     Read a file and return the text
@@ -164,6 +205,7 @@ def read_url(url: str):
         return remove_html_tags(response.text)
     except Exception:
         return None
+
 
 def handle_open(current_query: str):
     """
@@ -189,6 +231,7 @@ def handle_open(current_query: str):
     rprint("Please provide a file path to read")
     return None
 
+
 def handle_copy(current_query: str, conversation: list[dict]):
     """
     Handle the copy command
@@ -204,6 +247,7 @@ def handle_copy(current_query: str, conversation: list[dict]):
     else:
         rprint("[black on red]Nothing to copy[/]")
 
+
 def handle_delete(current_query: str):
     """
     Handle the delete command
@@ -213,6 +257,7 @@ def handle_delete(current_query: str):
         delete_conversation(components[1])
     else:
         rprint("Please provide a tag to delete")
+
 
 def handle_replay(current_query: str, conversation: list[dict], console: Console):
     """
@@ -231,14 +276,23 @@ def handle_replay(current_query: str, conversation: list[dict], console: Console
     else:
         show_saved_conversations(console)
 
+
 def handle_help():
+    """
+    Show help information
+    """
     rprint("[italic blue]type `exit` to quit[/]")
     rprint('[italic blue]type `open "path"` to open a file or url.[/]')
     rprint("[italic blue]type `replay` to view saved replays.[/]")
-    rprint('[italic blue]type `replay "name"` to reload a previously saved conversation.[/]')
+    rprint(
+        '[italic blue]type `replay "name"` to reload a previously saved conversation.[/]'
+    )
     rprint('[italic blue]type `save "name"` to save the current conversation.[/]')
-    rprint('[italic blue]type `copy` to copy the last response to the clipboard.[/]')
-    rprint('[italic blue]type `copy all` to copy the whole conversation to the clipboard.[/]')
+    rprint("[italic blue]type `copy` to copy the last response to the clipboard.[/]")
+    rprint(
+        "[italic blue]type `copy all` to copy the whole conversation to the clipboard.[/]"
+    )
+
 
 def handle_save(current_query: str, conversation: list[dict]):
     """
@@ -250,6 +304,7 @@ def handle_save(current_query: str, conversation: list[dict]):
     else:
         save_conversation(components[1], conversation)
     current_query = None
+
 
 @app.command()
 def start_repl():
@@ -284,9 +339,8 @@ def start_repl():
     current_query: str = None
 
     while go_again:
-
         if current_query is None or current_query.strip() == "":
-            current_query = input('> ').strip()
+            current_query = input("> ").strip()
 
         if current_query == "":
             continue
@@ -305,7 +359,7 @@ def start_repl():
             if file_text:
                 query = f"Please read this text:\n\n{file_text}\n\n"
                 _conversation.append({"role": "user", "content": query})
-                answer = ask_claude(_conversation)
+                answer = ask_chatgpt(_conversation)
 
                 _conversation.append({"role": "assistant", "content": answer})
                 console.print(Panel(Markdown(answer)))
@@ -324,7 +378,7 @@ def start_repl():
             else:
                 try:
                     _conversation.append({"role": "user", "content": current_query})
-                    answer = ask_claude(_conversation)
+                    answer = ask_chatgpt(_conversation)
                     _conversation.append({"role": "assistant", "content": answer})
                     console.print(Panel(Markdown(answer)))
                 except Exception as exception:
