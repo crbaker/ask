@@ -49,8 +49,10 @@ def ask_claude(conversation: list[dict]):
     # Models are shown at https://docs.anthropic.com/en/docs/about-claude/models#model-comparison-table
     model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
 
+    from anthropic.types import MessageParam
+
     messages = [
-        {"role": response["role"], "content": response["content"]}
+        MessageParam(role=response["role"], content=response["content"])
         for response in conversation
     ]
 
@@ -64,8 +66,12 @@ def ask_chatgpt(conversation: list[dict], model="gpt-5"):
     """
     Ask the ChatGPT API for a response
     """
+
+    api_key = os.getenv("CHATGPT_API_KEY")
+    assert api_key, "Please set the CHATGPT_API_KEY environment variable"
+
     client = OpenAI(
-        api_key=os.getenv("CHATGPT_API_KEY"),
+        api_key=api_key,
     )
     model = os.getenv("CHATGPT_MODEL", "gpt-5")
 
@@ -76,6 +82,13 @@ def ask_chatgpt(conversation: list[dict], model="gpt-5"):
 
     response = client.chat.completions.create(model=model, messages=messages)
     return response.choices[0].message.content or ""
+
+def fetch_model():
+    """
+    Fetch the model to use for the API
+    """
+    # return os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
+    return os.getenv("CHATGPT_MODEL", "gpt-5")
 
 
 def remove_html_tags(text: str):
@@ -294,11 +307,12 @@ def handle_help():
     )
 
 
-def handle_save(current_query: str, conversation: list[dict]):
+def handle_save(current_query: str | None, conversation: list[dict]):
     """
     Handle the save command
     """
-    components = current_query.split(" ")
+
+    components = [] if current_query is None else current_query.split(" ")
     if len(components) < 2:
         rprint("[black on red]Please provide a tag for the conversation to save[/]")
     else:
@@ -330,13 +344,13 @@ def start_repl():
     readline.parse_and_bind("tab: complete")
     readline.parse_and_bind("set editing-mode vi")
 
-    model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
+    model = fetch_model()
 
     rprint("[italic pink]Ask Repl[/italic pink] :brain:")
     rprint(f"[italic yellow]using model {model}[/]")
     rprint("[italic blue]type `help` to view available commands[/]")
 
-    current_query: str = None
+    current_query: str | None = None
 
     while go_again:
         if current_query is None or current_query.strip() == "":
