@@ -43,8 +43,8 @@ def ask_claude(conversation: list[dict]):
     """
     Ask the Claude API for a response
     """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    assert api_key, "Please set the CLAUDE_API_KEY environment variable"
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    assert api_key, "Please set the ANTHROPIC_API_KEY environment variable"
 
     # Models are shown at https://docs.anthropic.com/en/docs/about-claude/models#model-comparison-table
     model = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
@@ -87,8 +87,7 @@ def fetch_model():
     """
     Fetch the model to use for the API
     """
-    # return os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
-    return os.getenv("CHATGPT_MODEL", "gpt-5")
+    return os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
 
 
 def remove_html_tags(text: str):
@@ -373,7 +372,7 @@ def start_repl():
             if file_text:
                 query = f"Please read this text:\n\n{file_text}\n\n"
                 _conversation.append({"role": "user", "content": query})
-                answer = ask_chatgpt(_conversation)
+                answer = ask_claude(_conversation)
 
                 _conversation.append({"role": "assistant", "content": answer})
                 console.print(Panel(Markdown(answer)))
@@ -392,7 +391,7 @@ def start_repl():
             else:
                 try:
                     _conversation.append({"role": "user", "content": current_query})
-                    answer = ask_chatgpt(_conversation)
+                    answer = ask_claude(_conversation)
                     _conversation.append({"role": "assistant", "content": answer})
                     console.print(Panel(Markdown(answer)))
                 except Exception as exception:

@@ -24,8 +24,8 @@ pyinstaller --clean -y ask.spec
 There is no test suite or test runner wired up in this repo.
 
 ### Required environment variables
-- `CLAUDE_API_KEY` — needed only if switching the REPL to the Claude backend (see Architecture).
-- `CHATGPT_API_KEY` — needed for the default REPL flow.
+- `ANTHROPIC_API_KEY` — needed for the default REPL flow (Claude backend).
+- `CHATGPT_API_KEY` — needed only if switching the REPL back to the ChatGPT backend (see Architecture).
 - `CLAUDE_MODEL` / `CHATGPT_MODEL` — optional overrides; defaults are `claude-3-haiku-20240307` and `gpt-5`.
 
 ## Architecture
@@ -50,7 +50,7 @@ The loop reads a line, then routes it by **prefix match** (lowercased) before fa
 The conversation buffer is a plain `list[dict]` of `{role, content}` messages, mutated in place; `cls` and `replay <tag>` are the only things that reset it.
 
 ### Model backends
-Two functions exist: `ask_claude` (Anthropic SDK) and `ask_chatgpt` (OpenAI SDK). `start_repl` currently calls `ask_chatgpt` in both the `open` branch and the default query branch. `fetch_model` returns the ChatGPT model for the startup banner. To switch backends, both call sites and `fetch_model` must change together — there is no runtime toggle.
+Two functions exist: `ask_claude` (Anthropic SDK) and `ask_chatgpt` (OpenAI SDK). `start_repl` currently calls `ask_claude` in both the `open` branch and the default query branch. `fetch_model` returns the Claude model for the startup banner. To switch backends, both call sites and `fetch_model` must change together — there is no runtime toggle.
 
 ### `handle_open` content extraction
 Dispatch is by URL scheme then file extension, in this order:
